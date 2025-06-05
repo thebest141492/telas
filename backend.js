@@ -32,7 +32,7 @@ async function crearTablas() {
                 fecha_creacion DATETIME DEFAULT GETDATE()
             )
         `);
-        // Tabla de entradasssss
+        // Tabla de entradas
         await sql.query(`
             IF NOT EXISTS (SELECT * FROM sysobjects WHERE name='Entradas' AND xtype='U')
             CREATE TABLE Entradas (
@@ -191,12 +191,6 @@ app.get('/api/salidas', async (req, res) => {
 
 
 
-const path = require('path');
-
-// Servir index.html al acceder a la raíz del sitio
-app.get('/', (req, res) => {
-    res.sendFile(path.join(__dirname, 'index.html'));
-});
 
 
 
