@@ -32,7 +32,7 @@ async function crearTablas() {
                 fecha_creacion DATETIME DEFAULT GETDATE()
             )
         `);
-        // Tabla de entradas
+        // Tabla de entradasssss
         await sql.query(`
             IF NOT EXISTS (SELECT * FROM sysobjects WHERE name='Entradas' AND xtype='U')
             CREATE TABLE Entradas (
