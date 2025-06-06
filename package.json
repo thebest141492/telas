@@ -1,7 +1,20 @@
+
+
+
+
 {
+  "name": "telas-backend",
+  "version": "1.0.0",
+  "description": "Backend para el proyecto telas",
+  "main": "backend.js",
+  "scripts": {
+    "start": "node backend.js"
+  },
   "dependencies": {
     "cors": "^2.8.5",
     "express": "^5.1.0",
     "mssql": "^11.0.1"
-  }
+  },
+  "author": "thebest141492",
+  "license": "MIT"
 }

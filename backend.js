@@ -18,6 +18,12 @@ const config = {
     }
 };
 
+
+//sql.connect(config)
+ // .then(() => console.log('✅ Conectado a SQL Server'))
+  //.catch(err => console.error('❌ Error al conectar a SQL Server:', err));
+
+
 // --- CREAR TABLAS SI NO EXISTEN ---
 async function crearTablas() {
     try {

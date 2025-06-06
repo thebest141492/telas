@@ -46,16 +46,30 @@
             box-shadow: 0 4px 16px #2563eb22;
         }
         main {
-            max-width: 600px;
-            margin: 30px auto;
+            width: 100%;
+            max-width: 1200px;
+            min-width: 0;
+            margin: 3vw auto;
             background: #fff;
             border-radius: 16px;
             box-shadow: 0 8px 32px #2563eb22, 0 1.5px 6px #0001;
-            padding: 36px 40px 30px 40px;
+            padding: 36px 4vw 30px 4vw;
             transition: box-shadow 0.2s;
+            /* La altura se ajusta automáticamente al contenido */
         }
-        main:hover {
-            box-shadow: 0 12px 40px #2563eb33, 0 2px 8px #0002;
+        @media (max-width: 900px) {
+            main {
+                max-width: 98vw;
+                padding-left: 3vw;
+                padding-right: 3vw;
+            }
+        }
+        @media (max-width: 700px) {
+            main {
+                padding: 15px 5px;
+                max-width: 100vw;
+            }
+            nav button { padding: 12px 10px; font-size: 1em; }
         }
         h2 {
             margin-top: 0;
@@ -397,6 +411,73 @@
             text-align: center;
             letter-spacing: 1px;
         }
+        /* Tarjeta moderna para inventarioo */
+        .tarjeta-inventario {
+            background: linear-gradient(120deg, #2563eb 60%, #3b82f6 100%);
+            border-radius: 18px;
+            box-shadow: 0 6px 24px #2563eb33, 0 1.5px 6px #0001;
+            color: #fff;
+            min-width: 220px;
+            max-width: 260px;
+            min-height: 120px;
+            padding: 24px 22px 20px 22px;
+            margin-bottom: 12px;
+            position: relative;
+            display: flex;
+            flex-direction: column;
+            justify-content: flex-end;
+            transition: box-shadow 0.22s, transform 0.18s, background 0.22s;
+            overflow: hidden;
+        }
+        .tarjeta-inventario:hover {
+            box-shadow: 0 14px 40px #2563eb44, 0 2px 8px #0002;
+            transform: translateY(-6px) scale(1.045);
+            background: linear-gradient(120deg, #1e40af 60%, #2563eb 100%);
+        }
+        .tarjeta-inventario .existencia {
+            position: absolute;
+            top: 18px;
+            right: 22px;
+            background: #fff;
+            color: #2563eb;
+            font-weight: bold;
+            font-size: 1.35em;
+            border-radius: 10px;
+            padding: 6px 18px;
+            box-shadow: 0 2px 12px #2563eb22;
+            letter-spacing: 1px;
+            border: 2px solid #3b82f6;
+            transition: color 0.18s, border 0.18s;
+        }
+        .tarjeta-inventario:hover .existencia {
+            color: #1e40af;
+            border: 2px solid #1e40af;
+        }
+        .tarjeta-inventario .nombre {
+            margin-top: 54px;
+            font-size: 1.22em;
+            font-weight: 700;
+            text-align: left;
+            letter-spacing: 1.2px;
+            word-break: break-word;
+            text-shadow: 0 2px 8px #1e40af33;
+            line-height: 1.25;
+        }
+        /* NUEVO: icono decorativo */
+        .tarjeta-inventario::before {
+            content: "🧵";
+            position: absolute;
+            top: 18px;
+            left: 18px;
+            font-size: 2em;
+            opacity: 0.18;
+            pointer-events: none;
+            filter: blur(0.5px);
+        }
+        @media (max-width: 700px) {
+            #tarjetas-inventario { flex-direction: column; gap: 14px; }
+            .tarjeta-inventario { min-width: 0; max-width: 100%; }
+        }
         @media (max-width: 700px) {
             main { padding: 15px 5px; }
             nav button { padding: 12px 10px; font-size: 1em; }
@@ -518,17 +599,13 @@
         <!-- INVENTARIO -->
         <section id="ventana-inventario" class="hidden">
             <h2>Inventario Actual</h2>
-            <table id="tabla-inventario">
-                <thead>
-                    <tr>
-                        <th>Producto</th>
-                        <th>Cantidad</th>
-                    </tr>
-                </thead>
-                <tbody>
-                    <!-- Inventario aquí -->
-                </tbody>
-            </table>
+            <!-- Buscador de tarjetas de inventario -->
+            <div style="display:flex;gap:10px;align-items:center;margin-bottom:18px;">
+                <input type="text" id="buscar-inventario" placeholder="Buscar producto..." style="flex:1;padding:10px 12px;border:1px solid #b6c4e0;border-radius:6px;font-size:1em;">
+                <button type="button" id="btn-limpiar-buscar-inventario" title="Limpiar" style="padding:8px 18px;background:#e0e7ff;color:#2563eb;border:none;border-radius:6px;cursor:pointer;font-size:1em;font-weight:500;">Limpiar</button>
+            </div>
+            <!-- Contenedor de tarjetas de inventario -->
+            <div id="tarjetas-inventario" style="display:flex;flex-wrap:wrap;gap:22px;"></div>
         </section>
         <!-- MOVIMIENTOS -->
         <section id="ventana-movimientos" class="hidden">
@@ -658,6 +735,73 @@
                     margin: 18px 0 10px 0;
                     text-align: center;
                     letter-spacing: 1px;
+                }
+                /* Tarjeta moderna para inventario */
+                .tarjeta-inventario {
+                    background: linear-gradient(120deg, #2563eb 60%, #3b82f6 100%);
+                    border-radius: 18px;
+                    box-shadow: 0 6px 24px #2563eb33, 0 1.5px 6px #0001;
+                    color: #fff;
+                    min-width: 220px;
+                    max-width: 260px;
+                    min-height: 120px;
+                    padding: 24px 22px 20px 22px;
+                    margin-bottom: 12px;
+                    position: relative;
+                    display: flex;
+                    flex-direction: column;
+                    justify-content: flex-end;
+                    transition: box-shadow 0.22s, transform 0.18s, background 0.22s;
+                    overflow: hidden;
+                }
+                .tarjeta-inventario:hover {
+                    box-shadow: 0 14px 40px #2563eb44, 0 2px 8px #0002;
+                    transform: translateY(-6px) scale(1.045);
+                    background: linear-gradient(120deg, #1e40af 60%, #2563eb 100%);
+                }
+                .tarjeta-inventario .existencia {
+                    position: absolute;
+                    top: 18px;
+                    right: 22px;
+                    background: #fff;
+                    color: #2563eb;
+                    font-weight: bold;
+                    font-size: 1.35em;
+                    border-radius: 10px;
+                    padding: 6px 18px;
+                    box-shadow: 0 2px 12px #2563eb22;
+                    letter-spacing: 1px;
+                    border: 2px solid #3b82f6;
+                    transition: color 0.18s, border 0.18s;
+                }
+                .tarjeta-inventario:hover .existencia {
+                    color: #1e40af;
+                    border: 2px solid #1e40af;
+                }
+                .tarjeta-inventario .nombre {
+                    margin-top: 54px;
+                    font-size: 1.22em;
+                    font-weight: 700;
+                    text-align: left;
+                    letter-spacing: 1.2px;
+                    word-break: break-word;
+                    text-shadow: 0 2px 8px #1e40af33;
+                    line-height: 1.25;
+                }
+                /* NUEVO: icono decorativo */
+                .tarjeta-inventario::before {
+                    content: "🧵";
+                    position: absolute;
+                    top: 18px;
+                    left: 18px;
+                    font-size: 2em;
+                    opacity: 0.18;
+                    pointer-events: none;
+                    filter: blur(0.5px);
+                }
+                @media (max-width: 700px) {
+                    #tarjetas-inventario { flex-direction: column; gap: 14px; }
+                    .tarjeta-inventario { min-width: 0; max-width: 100%; }
                 }
                 @media (max-width: 700px) {
                     main { padding: 15px 5px; }
@@ -1359,14 +1503,26 @@
             });
         }
 
-        // --- ACTUALIZAR TABLA INVENTARIO ---
+        // --- ACTUALIZAR TARJETAS DE INVENTARIO ---
         function actualizarTabla() {
-            const tbody = document.getElementById('tabla-inventario').querySelector('tbody');
-            tbody.innerHTML = '';
-            inventario.forEach(prod => {
-                const tr = document.createElement('tr');
-                tr.innerHTML = `<td>${prod.nombre}</td><td>${prod.cantidad}</td>`;
-                tbody.appendChild(tr);
+            const cont = document.getElementById('tarjetas-inventario');
+            cont.innerHTML = '';
+            let lista = inventario;
+            if (filtroInventario) {
+                lista = inventario.filter(prod => prod.nombre.toLowerCase().includes(filtroInventario));
+            }
+            if (!lista.length) {
+                cont.innerHTML = '<div style="color:#888;font-size:1.08em;">Sin productos en inventario</div>';
+                return;
+            }
+            lista.forEach(prod => {
+                const card = document.createElement('div');
+                card.className = 'tarjeta-inventario';
+                card.innerHTML = `
+                    <div class="existencia">${prod.cantidad}</div>
+                    <div class="nombre">${prod.nombre}</div>
+                `;
+                cont.appendChild(card);
             });
         }
 
@@ -1488,6 +1644,19 @@
             document.getElementById('mov-autocomplete').classList.add('hidden');
             actualizarMovimientos();
             input.focus();
+        });
+
+        // --- Buscador de tarjetas de inventario ---
+        let filtroInventario = '';
+        document.getElementById('buscar-inventario').addEventListener('input', function() {
+            filtroInventario = this.value.trim().toLowerCase();
+            actualizarTabla();
+        });
+        document.getElementById('btn-limpiar-buscar-inventario').addEventListener('click', function() {
+            document.getElementById('buscar-inventario').value = '';
+            filtroInventario = '';
+            actualizarTabla();
+            document.getElementById('buscar-inventario').focus();
         });
 
         // --- INICIALIZACIÓN ---
