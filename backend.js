@@ -1,82 +1,86 @@
 const express = require('express');
-const { Pool } = require('pg');
+const sql = require('mssql');
 const cors = require('cors');
 
 const app = express();
 app.use(express.json());
 app.use(cors());
 
-
-
-
-// Configuración para PostgreSQL (tu base de datos en Render))
-const pool = new Pool({
-    user: 'inventarios_dnlr_user',
-    host: 'dpg-d14s4eqli9vc73altdg0-a.oregon-postgres.render.com',
-    database: 'inventarios_dnlr',
-    password: 'RpzOEdvuTdgG53bm7grYJXoxjzmaq7xa',
-    port: 5432,
-    ssl: {
-      rejectUnauthorized: false
+// Configuración para tu SQL Serverr
+const config = {
+    user: 'kike',
+    password: '04',
+    server: 'ENRIQUE-DELL\\SQLFERREIRA3',
+    database: 'inventarios',
+    options: {
+        encrypt: false,
+        trustServerCertificate: true
     }
-});
+};
+
+
+//sql.connect(config)
+ // .then(() => console.log('✅ Conectado a SQL Server'))
+  //.catch(err => console.error('❌ Error al conectar a SQL Server:', err));
+
 
 // --- CREAR TABLAS SI NO EXISTEN ---
 async function crearTablas() {
     try {
-        // Nuevos productos
-        await pool.query(`
-            CREATE TABLE IF NOT EXISTS NuevosProductos (
-                id SERIAL PRIMARY KEY,
-                nombre VARCHAR(100) UNIQUE NOT NULL,
+        await sql.connect(config);
+        // Tabla de nuevos productos
+        await sql.query(`
+            IF NOT EXISTS (SELECT * FROM sysobjects WHERE name='NuevosProductos' AND xtype='U')
+            CREATE TABLE NuevosProductos (
+                id INT IDENTITY PRIMARY KEY,
+                nombre NVARCHAR(100) UNIQUE NOT NULL,
                 cantidad_inicial INT NOT NULL,
-                fecha_creacion TIMESTAMP DEFAULT CURRENT_TIMESTAMP
-            );
+                fecha_creacion DATETIME DEFAULT GETDATE()
+            )
         `);
-
-        // Entradass
-        await pool.query(`
-            CREATE TABLE IF NOT EXISTS Entradas (
-                id SERIAL PRIMARY KEY,
-                producto VARCHAR(100) NOT NULL,
+        // Tabla de entradas
+        await sql.query(`
+            IF NOT EXISTS (SELECT * FROM sysobjects WHERE name='Entradas' AND xtype='U')
+            CREATE TABLE Entradas (
+                id INT IDENTITY PRIMARY KEY,
+                producto NVARCHAR(100) NOT NULL,
                 cantidad INT NOT NULL,
-                fecha TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
-                equipo VARCHAR(200)
-            );
+                fecha DATETIME DEFAULT GETDATE(),
+                equipo NVARCHAR(200)
+            )
         `);
-
-        // Salidas
-        await pool.query(`
-            CREATE TABLE IF NOT EXISTS Salidas (
-                id SERIAL PRIMARY KEY,
-                producto VARCHAR(100) NOT NULL,
+        // Tabla de salidas
+        await sql.query(`
+            IF NOT EXISTS (SELECT * FROM sysobjects WHERE name='Salidas' AND xtype='U')
+            CREATE TABLE Salidas (
+                id INT IDENTITY PRIMARY KEY,
+                producto NVARCHAR(100) NOT NULL,
                 cantidad INT NOT NULL,
-                fecha TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
-                equipo VARCHAR(200)
-            );
+                fecha DATETIME DEFAULT GETDATE(),
+                equipo NVARCHAR(200)
+            )
         `);
-
-        // Inventario
-        await pool.query(`
-            CREATE TABLE IF NOT EXISTS Inventario (
-                id SERIAL PRIMARY KEY,
-                nombre VARCHAR(100) UNIQUE NOT NULL,
+        // Tabla de inventario
+        await sql.query(`
+            IF NOT EXISTS (SELECT * FROM sysobjects WHERE name='Inventario' AND xtype='U')
+            CREATE TABLE Inventario (
+                id INT IDENTITY PRIMARY KEY,
+                nombre NVARCHAR(100) UNIQUE NOT NULL,
                 cantidad INT NOT NULL
-            );
+            )
         `);
-
-        // Movimientos
-        await pool.query(`
-            CREATE TABLE IF NOT EXISTS Movimientos (
-                id SERIAL PRIMARY KEY,
-                tipo VARCHAR(20) NOT NULL,
-                producto VARCHAR(100) NOT NULL,
+        // Tabla de movimientos
+        await sql.query(`
+            IF NOT EXISTS (SELECT * FROM sysobjects WHERE name='Movimientos' AND xtype='U')
+            CREATE TABLE Movimientos (
+                id INT IDENTITY PRIMARY KEY,
+                tipo NVARCHAR(20) NOT NULL,
+                producto NVARCHAR(100) NOT NULL,
                 cantidad INT NOT NULL,
-                fecha TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
-                equipo VARCHAR(200)
-            );
+                fecha DATETIME DEFAULT GETDATE(),
+                equipo NVARCHAR(200)
+            )
         `);
-
         console.log('Tablas verificadas/creadas correctamente.');
     } catch (err) {
         console.error('Error creando tablas:', err.message);
@@ -91,8 +95,9 @@ crearTablas();
 // Obtener inventario
 app.get('/api/inventario', async (req, res) => {
     try {
-        const result = await pool.query('SELECT id, nombre, cantidad FROM Inventario');
-        res.json(result.rows);
+        await sql.connect(config);
+        const result = await sql.query('SELECT id, nombre, cantidad FROM Inventario');
+        res.json(result.recordset);
     } catch (err) {
         res.status(500).json({ error: err.message });
     }
@@ -102,19 +107,13 @@ app.get('/api/inventario', async (req, res) => {
 app.post('/api/inventario', async (req, res) => {
     const { nombre, cantidad } = req.body;
     try {
-        const existe = await pool.query(
-          'SELECT COUNT(*) as total FROM Inventario WHERE LOWER(nombre) = LOWER($1)', 
-          [nombre]
-        );
-
-        if (parseInt(existe.rows[0].total) > 0) {
+        await sql.connect(config);
+        // Evitar duplicados
+        const existe = await sql.query`SELECT COUNT(*) as total FROM Inventario WHERE LOWER(nombre) = LOWER(${nombre})`;
+        if (existe.recordset[0].total > 0) {
             return res.status(400).json({ error: 'El producto ya existe.' });
         }
-
-        await pool.query(
-          'INSERT INTO Inventario (nombre, cantidad) VALUES ($1, $2)', 
-          [nombre, cantidad]
-        );
+        await sql.query`INSERT INTO Inventario (nombre, cantidad) VALUES (${nombre}, ${cantidad})`;
         res.json({ ok: true });
     } catch (err) {
         res.status(500).json({ error: err.message });
@@ -125,21 +124,13 @@ app.post('/api/inventario', async (req, res) => {
 app.post('/api/entrada', async (req, res) => {
     const { nombre, cantidad, equipo } = req.body;
     try {
-        await pool.query(
-          'UPDATE Inventario SET cantidad = cantidad + $1 WHERE LOWER(nombre) = LOWER($2)', 
-          [cantidad, nombre]
-        );
-
-        await pool.query(
-          'INSERT INTO Movimientos (tipo, producto, cantidad, fecha, equipo) VALUES ($1, $2, $3, CURRENT_TIMESTAMP, $4)', 
-          ['Entrada', nombre, cantidad, equipo]
-        );
-
-        await pool.query(
-          'INSERT INTO Entradas (producto, cantidad, fecha, equipo) VALUES ($1, $2, CURRENT_TIMESTAMP, $3)', 
-          [nombre, cantidad, equipo]
-        );
-
+        await sql.connect(config);
+        // Actualizar inventario
+        await sql.query`UPDATE Inventario SET cantidad = cantidad + ${cantidad} WHERE LOWER(nombre) = LOWER(${nombre})`;
+        // Registrar movimiento
+        await sql.query`INSERT INTO Movimientos (tipo, producto, cantidad, fecha, equipo) VALUES ('Entrada', ${nombre}, ${cantidad}, GETDATE(), ${equipo})`;
+        // Registrar en tabla Entradas
+        await sql.query`INSERT INTO Entradas (producto, cantidad, fecha, equipo) VALUES (${nombre}, ${cantidad}, GETDATE(), ${equipo})`;
         res.json({ ok: true });
     } catch (err) {
         res.status(500).json({ error: err.message });
@@ -150,34 +141,21 @@ app.post('/api/entrada', async (req, res) => {
 app.post('/api/salida', async (req, res) => {
     const { nombre, cantidad, equipo } = req.body;
     try {
-        const result = await pool.query(
-          'SELECT cantidad FROM Inventario WHERE LOWER(nombre) = LOWER($1)', 
-          [nombre]
-        );
-
-        if (result.rows.length === 0) {
+        await sql.connect(config);
+        // Verificar stock
+        const result = await sql.query`SELECT cantidad FROM Inventario WHERE LOWER(nombre) = LOWER(${nombre})`;
+        if (result.recordset.length === 0) {
             return res.status(404).json({ error: 'Producto no encontrado.' });
         }
-
-        if (result.rows[0].cantidad < cantidad) {
+        if (result.recordset[0].cantidad < cantidad) {
             return res.status(400).json({ error: 'No hay suficiente stock.' });
         }
-
-        await pool.query(
-          'UPDATE Inventario SET cantidad = cantidad - $1 WHERE LOWER(nombre) = LOWER($2)', 
-          [cantidad, nombre]
-        );
-
-        await pool.query(
-          'INSERT INTO Movimientos (tipo, producto, cantidad, fecha, equipo) VALUES ($1, $2, $3, CURRENT_TIMESTAMP, $4)', 
-          ['Salida', nombre, cantidad, equipo]
-        );
-
-        await pool.query(
-          'INSERT INTO Salidas (producto, cantidad, fecha, equipo) VALUES ($1, $2, CURRENT_TIMESTAMP, $3)', 
-          [nombre, cantidad, equipo]
-        );
-
+        // Actualizar inventario
+        await sql.query`UPDATE Inventario SET cantidad = cantidad - ${cantidad} WHERE LOWER(nombre) = LOWER(${nombre})`;
+        // Registrar movimiento
+        await sql.query`INSERT INTO Movimientos (tipo, producto, cantidad, fecha, equipo) VALUES ('Salida', ${nombre}, ${cantidad}, GETDATE(), ${equipo})`;
+        // Registrar en tabla Salidas
+        await sql.query`INSERT INTO Salidas (producto, cantidad, fecha, equipo) VALUES (${nombre}, ${cantidad}, GETDATE(), ${equipo})`;
         res.json({ ok: true });
     } catch (err) {
         res.status(500).json({ error: err.message });
@@ -187,10 +165,9 @@ app.post('/api/salida', async (req, res) => {
 // Obtener movimientos
 app.get('/api/movimientos', async (req, res) => {
     try {
-        const result = await pool.query(
-          'SELECT tipo, producto, cantidad, fecha, equipo FROM Movimientos ORDER BY fecha DESC'
-        );
-        res.json(result.rows);
+        await sql.connect(config);
+        const result = await sql.query('SELECT tipo, producto, cantidad, fecha, equipo FROM Movimientos ORDER BY fecha DESC');
+        res.json(result.recordset);
     } catch (err) {
         res.status(500).json({ error: err.message });
     }
@@ -199,10 +176,9 @@ app.get('/api/movimientos', async (req, res) => {
 // Obtener entradas
 app.get('/api/entradas', async (req, res) => {
     try {
-        const result = await pool.query(
-          'SELECT producto, cantidad, fecha, equipo FROM Entradas ORDER BY fecha DESC'
-        );
-        res.json(result.rows);
+        await sql.connect(config);
+        const result = await sql.query('SELECT producto, cantidad, fecha, equipo FROM Entradas ORDER BY fecha DESC');
+        res.json(result.recordset);
     } catch (err) {
         res.status(500).json({ error: err.message });
     }
@@ -211,20 +187,23 @@ app.get('/api/entradas', async (req, res) => {
 // Obtener salidas
 app.get('/api/salidas', async (req, res) => {
     try {
-        const result = await pool.query(
-          'SELECT producto, cantidad, fecha, equipo FROM Salidas ORDER BY fecha DESC'
-        );
-        res.json(result.rows);
+        await sql.connect(config);
+        const result = await sql.query('SELECT producto, cantidad, fecha, equipo FROM Salidas ORDER BY fecha DESC');
+        res.json(result.recordset);
     } catch (err) {
         res.status(500).json({ error: err.message });
     }
 });
 
+
+
+
+
+
+
+
 // --- INICIAR SERVIDOR ---
-const PORT = process.env.PORT || 10000;
+const PORT = 5500;
 app.listen(PORT, () => {
     console.log(`API escuchando en http://localhost:${PORT}`);
 });
-
-
-
