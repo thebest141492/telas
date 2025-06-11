@@ -6,6 +6,21 @@ const app = express();
 app.use(express.json());
 app.use(cors());
 
+
+const path = require('path');
+
+// Servir archivos estáticos desde /public
+app.use(express.static(path.join(__dirname, 'public')));
+
+// Ruta raíz sirve index.html
+app.get('/', (req, res) => {
+  res.sendFile(path.join(__dirname, 'public', 'index.html'));
+});
+
+
+
+
+
 // Configuración para PostgreSQL (tu base de datos en Render))
 const pool = new Pool({
     user: 'inventarios_dnlr_user',
