@@ -31,7 +31,7 @@ async function crearTablas() {
             );
         `);
 
-        // Entradas
+        // Entradass
         await pool.query(`
             CREATE TABLE IF NOT EXISTS Entradas (
                 id SERIAL PRIMARY KEY,
