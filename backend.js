@@ -18,7 +18,7 @@ app.get('/', (req, res) => {
 
 
 
-// Configuración para PostgreSQL (tu base de datos en Render)
+// Configuración para PostgreSQL (tu base de datos en Render))
 const pool = new Pool({
     user: 'inventarios_dnlr_user',
     host: 'dpg-d14s4eqli9vc73altdg0-a.oregon-postgres.render.com',
