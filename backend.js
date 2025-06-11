@@ -6,7 +6,7 @@ const app = express();
 app.use(express.json());
 app.use(cors());
 
-// Configuración para tu SQL Server
+// Configuración para tu SQL Serverr
 const config = {
     user: 'kike',
     password: '04',
