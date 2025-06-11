@@ -7,18 +7,6 @@ app.use(express.json());
 app.use(cors());
 
 
-const path = require('path');
-
-// Servir archivos estáticos desde /public
-app.use(express.static(path.join(__dirname, 'public')));
-
-// Ruta raíz sirve index.html
-app.get('/', (req, res) => {
-  res.sendFile(path.join(__dirname, 'public', 'index.html'));
-});
-
-
-
 
 
 // Configuración para PostgreSQL (tu base de datos en Render))
@@ -233,13 +221,10 @@ app.get('/api/salidas', async (req, res) => {
 });
 
 // --- INICIAR SERVIDOR ---
-const PORT = process.env.PORT || 5500;
+const PORT = process.env.PORT || 10000;
 app.listen(PORT, () => {
     console.log(`API escuchando en http://localhost:${PORT}`);
 });
 
 
 
-app.get('/', (req, res) => {
-  res.send('🎉 Backend funcionando correctamente en Render!');
-});
