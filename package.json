@@ -1,7 +1,3 @@
-
-
-
-
 {
   "name": "telas-backend",
   "version": "1.0.0",
@@ -13,7 +9,8 @@
   "dependencies": {
     "cors": "^2.8.5",
     "express": "^5.1.0",
-    "mssql": "^11.0.1"
+    "mssql": "^11.0.1",
+    "pg": "^8.16.0"
   },
   "author": "thebest141492",
   "license": "MIT"
