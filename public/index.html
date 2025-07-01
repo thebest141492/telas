@@ -453,15 +453,23 @@
             color: #1e40af;
             border: 2px solid #1e40af;
         }
+        .tarjeta-inventario .imagen-producto {
+            width: 64px;
+            height: 64px;
+            object-fit: cover;
+            border-radius: 10px;
+            box-shadow: 0 2px 8px #0002;
+            position: absolute;
+            top: 18px;
+            left: 18px;
+            background: #fff;
+            border: 2px solid #e0e7ff;
+        }
         .tarjeta-inventario .nombre {
             margin-top: 54px;
-            font-size: 1.22em;
-            font-weight: 700;
-            text-align: left;
-            letter-spacing: 1.2px;
-            word-break: break-word;
-            text-shadow: 0 2px 8px #1e40af33;
-            line-height: 1.25;
+            margin-left: 0;
+            padding-left: 0;
+            /* Si hay imagen, el nombre baja más */
         }
         /* NUEVO: icono decorativo */
         .tarjeta-inventario::before {
@@ -521,7 +529,7 @@
                 </div>
                 <!-- Contenedor derecho: formulario -->
                 <div style="flex:2;">
-                    <form id="form-nuevo">
+                    <form id="form-nuevo" enctype="multipart/form-data">
                         <div class="form-group">
                             <label>Nombre:</label>
                             <input type="text" id="nuevo-nombre" required autocomplete="off">
@@ -529,6 +537,10 @@
                         <div class="form-group">
                             <label>Cantidad inicial:</label>
                             <input type="number" id="nuevo-cantidad" min="0" required>
+                        </div>
+                        <div class="form-group">
+                            <label>Imagen (JPG o PNG):</label>
+                            <input type="file" id="nuevo-imagen" accept="image/png, image/jpeg">
                         </div>
                         <button type="submit">Agregar Producto</button>
                     </form>
@@ -778,15 +790,23 @@
                     color: #1e40af;
                     border: 2px solid #1e40af;
                 }
+                .tarjeta-inventario .imagen-producto {
+                    width: 64px;
+                    height: 64px;
+                    object-fit: cover;
+                    border-radius: 10px;
+                    box-shadow: 0 2px 8px #0002;
+                    position: absolute;
+                    top: 18px;
+                    left: 18px;
+                    background: #fff;
+                    border: 2px solid #e0e7ff;
+                }
                 .tarjeta-inventario .nombre {
                     margin-top: 54px;
-                    font-size: 1.22em;
-                    font-weight: 700;
-                    text-align: left;
-                    letter-spacing: 1.2px;
-                    word-break: break-word;
-                    text-shadow: 0 2px 8px #1e40af33;
-                    line-height: 1.25;
+                    margin-left: 0;
+                    padding-left: 0;
+                    /* Si hay imagen, el nombre baja más */
                 }
                 /* NUEVO: icono decorativo */
                 .tarjeta-inventario::before {
@@ -812,7 +832,7 @@
     </main>
     <script>
         // --- CONFIGURACIÓN API ---
-     const API_URL = '/api';
+        const API_URL = '/api';
 
 
         let inventario = [];
@@ -859,19 +879,23 @@
                 salidas = [];
             }
         }
-        async function agregarProducto(nombre, cantidad) {
+        async function agregarProducto(nombre, cantidad, imagenFile) {
             try {
+                const formData = new FormData();
+                formData.append('nombre', nombre);
+                formData.append('cantidad', cantidad);
+                if (imagenFile) formData.append('imagen', imagenFile);
                 const res = await fetch(`${API_URL}/inventario`, {
                     method: 'POST',
-                    headers: { 'Content-Type': 'application/json' },
-                    body: JSON.stringify({ nombre, cantidad })
+                    body: formData
                 });
                 if (!res.ok) {
-                    const data = await res.json();
-                    throw new Error(data.error || 'Error al agregar producto');
+                    let data;
+                    try { data = await res.json(); } catch {}
+                    throw new Error((data && data.error) || 'Error al agregar producto');
                 }
             } catch (err) {
-                alert('No se pudo conectar con el backend. ¿Está corriendo el servidor?\n\n' + err.message);
+                alert('No se pudo conectar con el backend. ¿Está corriendo el servidorr?\n\n' + err.message);
                 throw err;
             }
         }
@@ -1402,9 +1426,16 @@
             e.preventDefault();
             const nombre = document.getElementById('nuevo-nombre').value.trim();
             const cantidad = parseInt(document.getElementById('nuevo-cantidad').value, 10);
+            const imagenInput = document.getElementById('nuevo-imagen');
+            const imagenFile = imagenInput.files && imagenInput.files[0] ? imagenInput.files[0] : null;
             if (!nombre || isNaN(cantidad) || cantidad < 0) return;
+            // Validar imagen (opcional)
+            if (imagenFile && !['image/jpeg','image/png'].includes(imagenFile.type)) {
+                alert('Solo se permiten imágenes JPG o PNG');
+                return;
+            }
             try {
-                await agregarProducto(nombre, cantidad);
+                await agregarProducto(nombre, cantidad, imagenFile);
                 await cargarInventario();
                 actualizarTabla();
                 actualizarListaProductos(document.getElementById('buscar-producto-lista').value);
@@ -1413,96 +1444,6 @@
                 alert(err.message);
             }
         });
-
-        // --- FORMULARIO ENTRADA ---
-        document.getElementById('form-entrada').addEventListener('submit', async function(e) {
-            e.preventDefault();
-            const nombre = document.getElementById('entrada-producto').value.trim();
-            const cantidad = parseInt(document.getElementById('entrada-cantidad').value, 10);
-            if (!nombre || isNaN(cantidad) || cantidad < 1) return;
-            try {
-                await registrarEntrada(nombre, cantidad, navigator.userAgent);
-                await cargarInventario();
-                await cargarMovimientos();
-                await cargarEntradas();
-                actualizarTabla();
-                actualizarTablaEntradas();
-                this.reset();
-            } catch (err) {
-                alert(err.message);
-            }
-        });
-
-        // Función para mostrar notificación moderna (toast)
-        function mostrarToast(mensaje) {
-            const toast = document.getElementById('toast-notificacion');
-            toast.textContent = mensaje;
-            toast.style.display = 'block';
-            toast.style.opacity = '1';
-            toast.style.pointerEvents = 'auto';
-            toast.style.transform = 'translateY(0)';
-            setTimeout(() => {
-                toast.style.opacity = '0';
-                toast.style.pointerEvents = 'none';
-                toast.style.transform = 'translateY(-20px)';
-            }, 3200);
-        }
-
-        // --- FORMULARIO SALIDA ---
-        document.getElementById('form-salida').addEventListener('submit', async function(e) {
-            e.preventDefault();
-            const nombre = document.getElementById('salida-producto').value.trim();
-            const cantidad = parseInt(document.getElementById('salida-cantidad').value, 10);
-            if (!nombre || isNaN(cantidad) || cantidad < 1) return;
-            // Buscar existencia actual
-            const prod = inventario.find(p => p.nombre.toLowerCase() === nombre.toLowerCase());
-            if (!prod) {
-                mostrarToast('Producto no encontrado en inventario.');
-                return;
-            }
-            if (cantidad > prod.cantidad) {
-                // Notificación moderna de existencia insuficiente
-                mostrarToast(`No hay suficiente existencia. Existencia actual: ${prod.cantidad}`);
-                mostrarExistenciaSalida(prod);
-                return;
-            }
-            try {
-                await registrarSalida(nombre, cantidad, navigator.userAgent);
-                await cargarInventario();
-                await cargarMovimientos();
-                await cargarSalidas();
-                actualizarTabla();
-                actualizarTablaSalidas();
-                mostrarExistenciaSalida(inventario.find(p => p.nombre.toLowerCase() === nombre.toLowerCase()));
-                this.reset();
-                setTimeout(() => mostrarExistenciaSalida(null), 500);
-            } catch (err) {
-                mostrarToast(err.message);
-                mostrarExistenciaSalida(inventario.find(p => p.nombre.toLowerCase() === nombre.toLowerCase()));
-            }
-        });
-
-        // --- LISTA Y BUSCADOR DE PRODUCTOS EN NUEVOS PRODUCTOS ---
-        function actualizarListaProductos(filtro = '') {
-            const ul = document.getElementById('lista-productos');
-            ul.innerHTML = '';
-            let lista = inventario;
-            if (filtro) {
-                const val = filtro.trim().toLowerCase();
-                lista = inventario.filter(p => p.nombre.toLowerCase().includes(val));
-            }
-            if (lista.length === 0) {
-                ul.innerHTML = '<li style="color:#888;font-size:0.98em;">Sin productos</li>';
-                return;
-            }
-            lista.forEach(prod => {
-                const li = document.createElement('li');
-                li.textContent = `${prod.nombre} (${prod.cantidad})`;
-                li.style.padding = '7px 0 7px 8px';
-                li.style.borderBottom = '1px solid #e5e7eb';
-                ul.appendChild(li);
-            });
-        }
 
         // --- ACTUALIZAR TARJETAS DE INVENTARIO ---
         function actualizarTabla() {
@@ -1517,9 +1458,16 @@
                 return;
             }
             lista.forEach(prod => {
+                // Si prod.imagen existe, mostrarla
+                let imgHtml = '';
+                if (prod.imagen) {
+                    // Asume que prod.imagen es el nombre de archivo, y el backend la sirve en /uploads/
+                    imgHtml = `<img class="imagen-producto" src="/uploads/${prod.imagen}" alt="Imagen de ${prod.nombre}" onerror="this.style.display='none'">`;
+                }
                 const card = document.createElement('div');
                 card.className = 'tarjeta-inventario';
                 card.innerHTML = `
+                    ${imgHtml}
                     <div class="existencia">${prod.cantidad}</div>
                     <div class="nombre">${prod.nombre}</div>
                 `;
@@ -1651,6 +1599,58 @@
         let filtroInventario = '';
         document.getElementById('buscar-inventario').addEventListener('input', function() {
             filtroInventario = this.value.trim().toLowerCase();
+            actualizarTabla();
+        });
+        document.getElementById('btn-limpiar-buscar-inventario').addEventListener('click', function() {
+            document.getElementById('buscar-inventario').value = '';
+            filtroInventario = '';
+            actualizarTabla();
+            document.getElementById('buscar-inventario').focus();
+        });
+
+        // --- INICIALIZACIÓN ---
+        inicializarDatos();
+        setupMovimientosAutocomplete();
+        setupBuscarProductoLista();
+        // Inicializar tablas de entradas y salidas al cargar
+        cargarEntradas().then(actualizarTablaEntradas);
+        cargarSalidas().then(actualizarTablaSalidas);
+    </script>
+    <!-- NOTA IMPORTANTE PARA EL BACKEND -->
+    <!-- 
+        Para que las entradas y salidas se guarden por separado en las tablas Entradas y Salidas de SQL Server,
+        tu backend debe insertar un registro en la tabla correspondiente cada vez que se registre una entrada o salida.
+
+        Ejemplo para Node.js/Express usando mssql:
+
+        // ENTRADA
+        app.post('/api/entrada', async (req, res) => {
+            const { nombre, cantidad, equipo } = req.body;
+            try {
+                // Actualiza inventario y movimientos...
+                await sql.query`INSERT INTO Entradas (producto, cantidad, fecha, equipo) VALUES (${nombre}, ${cantidad}, GETDATE(), ${equipo})`;
+                res.json({ ok: true });
+            } catch (err) {
+                res.status(500).json({ error: 'Error al registrar entrada en la tabla Entradas' });
+            }
+        });
+
+        // SALIDA
+        app.post('/api/salida', async (req, res) => {
+            const { nombre, cantidad, equipo } = req.body;
+            try {
+                // Actualiza inventario y movimientos...
+                await sql.query`INSERT INTO Salidas (producto, cantidad, fecha, equipo) VALUES (${nombre}, ${cantidad}, GETDATE(), ${equipo})`;
+                res.json({ ok: true });
+            } catch (err) {
+                res.status(500).json({ error: 'Error al registrar salida en la tabla Salidas' });
+            }
+        });
+
+        Además, debes exponer los endpoints GET /api/entradas y /api/salidas para que el frontend pueda consultar estas tablas.
+    -->
+</body>
+</html>
             actualizarTabla();
         });
         document.getElementById('btn-limpiar-buscar-inventario').addEventListener('click', function() {

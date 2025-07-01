@@ -7,7 +7,7 @@ app.use(express.json());
 app.use(cors());
 
 
-
+// se añadio para carpeta public
 const path = require('path');
 app.use(express.static(path.join(__dirname, 'public')));
 app.get('/', (req, res) => {
