@@ -1,6 +1,9 @@
 const express = require('express');
 const { Pool } = require('pg');
 const cors = require('cors');
+// NUEVO: Para manejo de archivos
+const multer = require('multer');
+const upload = multer();
 
 const app = express();
 app.use(express.json());
@@ -65,12 +68,13 @@ async function crearTablas() {
             );
         `);
 
-        // Inventario
+        // Inventario (ahora con imagen)
         await pool.query(`
             CREATE TABLE IF NOT EXISTS Inventario (
                 id SERIAL PRIMARY KEY,
                 nombre VARCHAR(100) UNIQUE NOT NULL,
-                cantidad INT NOT NULL
+                cantidad INT NOT NULL,
+                imagen TEXT
             );
         `);
 
@@ -97,32 +101,42 @@ crearTablas();
 
 // --- ENDPOINTS ---
 
-// Obtener inventario
+// Obtener inventario (ahora incluye imagen)
 app.get('/api/inventario', async (req, res) => {
     try {
-        const result = await pool.query('SELECT id, nombre, cantidad FROM Inventario');
+        const result = await pool.query('SELECT id, nombre, cantidad, imagen FROM Inventario');
         res.json(result.rows);
     } catch (err) {
         res.status(500).json({ error: err.message });
     }
 });
 
-// Agregar producto nuevo
-app.post('/api/inventario', async (req, res) => {
-    const { nombre, cantidad } = req.body;
+// Agregar producto nuevo (con imagen)
+app.post('/api/inventario', upload.single('imagen'), async (req, res) => {
+    // Si es multipart, los datos vienen en req.body y el archivo en req.file
+    const nombre = req.body.nombre;
+    const cantidad = req.body.cantidad;
+    let imagenBase64 = null;
+    if (req.file) {
+        // Detectar tipo mime
+        const mime = req.file.mimetype;
+        if (mime === 'image/png' || mime === 'image/jpeg') {
+            imagenBase64 = `data:${mime};base64,${req.file.buffer.toString('base64')}`;
+        } else {
+            return res.status(400).json({ error: 'Solo se permiten imágenes PNG o JPG.' });
+        }
+    }
     try {
         const existe = await pool.query(
           'SELECT COUNT(*) as total FROM Inventario WHERE LOWER(nombre) = LOWER($1)', 
           [nombre]
         );
-
         if (parseInt(existe.rows[0].total) > 0) {
             return res.status(400).json({ error: 'El producto ya existe.' });
         }
-
         await pool.query(
-          'INSERT INTO Inventario (nombre, cantidad) VALUES ($1, $2)', 
-          [nombre, cantidad]
+          'INSERT INTO Inventario (nombre, cantidad, imagen) VALUES ($1, $2, $3)', 
+          [nombre, cantidad, imagenBase64]
         );
         res.json({ ok: true });
     } catch (err) {
