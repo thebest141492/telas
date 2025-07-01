@@ -876,7 +876,6 @@
                     body: formData
                 });
                 if (!res.ok) {
-                    // Si el backend responde con JSON de error
                     let data;
                     try { data = await res.json(); } catch {}
                     throw new Error((data && data.error) || 'Error al agregar producto');
@@ -1530,16 +1529,25 @@
                 return;
             }
             lista.forEach(prod => {
-                // NUEVO: Mostrar imagen si existe
+                // Fondo transparente si es PNG, blanco si no, imagen centrada y sin contorno
+                let fondoImg = '#fff';
+                if (prod.imagen && prod.imagen.startsWith('data:image/png')) {
+                    fondoImg = 'transparent';
+                }
                 const imgHtml = prod.imagen
-                    ? `<img src="${prod.imagen}" alt="Imagen de ${prod.nombre}" style="width:60px;height:60px;object-fit:cover;border-radius:10px;box-shadow:0 2px 8px #0002;position:absolute;top:18px;left:18px;background:#fff;">`
+                    ? `<div style="width:100%;background:${fondoImg};border-radius:14px 14px 0 0;display:flex;align-items:center;justify-content:center;padding-top:12px;padding-bottom:12px;">
+                            <img src="${prod.imagen}" alt="Imagen de ${prod.nombre}" 
+                                style="max-width:80%;max-height:180px;width:auto;height:auto;display:block;margin:auto;box-shadow:none;border:none;background:${fondoImg};">
+                       </div>`
                     : '';
                 const card = document.createElement('div');
                 card.className = 'tarjeta-inventario';
+                card.style.position = 'relative';
+                card.style.paddingTop = prod.imagen ? '0' : '24px';
                 card.innerHTML = `
                     ${imgHtml}
-                    <div class="existencia">${prod.cantidad}</div>
-                    <div class="nombre" style="margin-top:${prod.imagen ? '90px' : '54px'}">${prod.nombre}</div>
+                    <div class="nombre" style="margin-top:${prod.imagen ? '18px' : '54px'}">${prod.nombre}</div>
+                    <div class="existencia" style="position:absolute;bottom:18px;right:22px;top:auto;left:auto;">${prod.cantidad}</div>
                 `;
                 cont.appendChild(card);
             });

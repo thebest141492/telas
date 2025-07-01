@@ -68,14 +68,26 @@ async function crearTablas() {
             );
         `);
 
-        // Inventario (ahora con imagen)
+        // Inventario (sin imagen)
         await pool.query(`
             CREATE TABLE IF NOT EXISTS Inventario (
                 id SERIAL PRIMARY KEY,
                 nombre VARCHAR(100) UNIQUE NOT NULL,
-                cantidad INT NOT NULL,
-                imagen TEXT
+                cantidad INT NOT NULL
             );
+        `);
+        // NUEVO: Agregar columna imagen si no existe
+        await pool.query(`
+            DO $$
+            BEGIN
+                IF NOT EXISTS (
+                    SELECT 1 FROM information_schema.columns 
+                    WHERE table_name='inventario' AND column_name='imagen'
+                ) THEN
+                    ALTER TABLE Inventario ADD COLUMN imagen TEXT;
+                END IF;
+            END
+            $$;
         `);
 
         // Movimientos
@@ -118,7 +130,6 @@ app.post('/api/inventario', upload.single('imagen'), async (req, res) => {
     const cantidad = req.body.cantidad;
     let imagenBase64 = null;
     if (req.file) {
-        // Detectar tipo mime
         const mime = req.file.mimetype;
         if (mime === 'image/png' || mime === 'image/jpeg') {
             imagenBase64 = `data:${mime};base64,${req.file.buffer.toString('base64')}`;
