@@ -254,52 +254,6 @@ app.get('/api/salidas', async (req, res) => {
     }
 });
 
-// Actualizar producto existente (nombre, cantidad, imagen)
-app.put('/api/inventario/:id', upload.single('imagen'), async (req, res) => {
-    const id = req.params.id;
-    const nombre = req.body.nombre;
-    const cantidad = req.body.cantidad;
-    let imagenBase64 = null;
-    if (req.file) {
-        const mime = req.file.mimetype;
-        if (mime === 'image/png' || mime === 'image/jpeg') {
-            imagenBase64 = `data:${mime};base64,${req.file.buffer.toString('base64')}`;
-        } else {
-            return res.status(400).json({ error: 'Solo se permiten imágenes PNG o JPG.' });
-        }
-    }
-    try {
-        // Verificar si el producto existe
-        const existe = await pool.query('SELECT * FROM Inventario WHERE id = $1', [id]);
-        if (existe.rows.length === 0) {
-            return res.status(404).json({ error: 'Producto no encontrado.' });
-        }
-        // Si el nombre cambia, verificar que no exista otro producto con ese nombre
-        if (nombre && nombre.toLowerCase() !== existe.rows[0].nombre.toLowerCase()) {
-            const existeNombre = await pool.query(
-                'SELECT COUNT(*) as total FROM Inventario WHERE LOWER(nombre) = LOWER($1) AND id <> $2',
-                [nombre, id]
-            );
-            if (parseInt(existeNombre.rows[0].total) > 0) {
-                return res.status(400).json({ error: 'Ya existe otro producto con ese nombre.' });
-            }
-        }
-        // Actualizar campos
-        let query = 'UPDATE Inventario SET nombre = $1, cantidad = $2';
-        let params = [nombre, cantidad];
-        if (imagenBase64 !== null) {
-            query += ', imagen = $3';
-            params.push(imagenBase64);
-        }
-        query += ' WHERE id = $' + (params.length + 1);
-        params.push(id);
-        await pool.query(query, params);
-        res.json({ ok: true });
-    } catch (err) {
-        res.status(500).json({ error: err.message });
-    }
-});
-
 // --- INICIAR SERVIDOR ---
 const PORT = process.env.PORT || 5500;
 app.listen(PORT, () => {

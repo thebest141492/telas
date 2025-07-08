@@ -535,11 +535,7 @@
                             <label>Imagen (JPG o PNG):</label>
                             <input type="file" id="nuevo-imagen" accept="image/png, image/jpeg">
                         </div>
-                        <!-- NUEVO: Botones para modo edición/agregar -->
-                        <div id="nuevo-botones">
-                            <button type="submit" id="btn-guardar-producto">Agregar Producto</button>
-                            <button type="button" id="btn-cancelar-edicion" style="display:none;margin-left:10px;background:#e0e7ff;color:#2563eb;">Cancelar edición</button>
-                        </div>
+                        <button type="submit">Agregar Producto</button>
                     </form>
                 </div>
             </div>
@@ -821,8 +817,10 @@
     </main>
     <script>
         // --- CONFIGURACIÓN API ---
-        const API_URL = 'http://localhost:5500/api';
-
+        // Detectar si estamos en Render o local
+        const API_URL = (location.hostname.includes('onrender.com'))
+            ? 'https://telas.onrender.com/api'
+            : '/api';
 
         let inventario = [];
         let movimientos = [];
@@ -915,31 +913,6 @@
                 if (!res.ok) {
                     const data = await res.json();
                     throw new Error(data.error || 'Error al registrar salida');
-                }
-            } catch (err) {
-                alert('No se pudo conectar con el backend. ¿Está corriendo el servidor?\n\n' + err.message);
-                throw err;
-            }
-        }
-
-        // --- NUEVO: Modo edición de producto ---
-        let productoEditando = null;
-
-        // --- API para editar producto ---
-        async function editarProducto(id, nombre, cantidad, imagenFile) {
-            try {
-                const formData = new FormData();
-                formData.append('nombre', nombre);
-                formData.append('cantidad', cantidad);
-                if (imagenFile) formData.append('imagen', imagenFile);
-                const res = await fetch(`${API_URL}/inventario/${id}`, {
-                    method: 'PUT',
-                    body: formData
-                });
-                if (!res.ok) {
-                    let data;
-                    try { data = await res.json(); } catch {}
-                    throw new Error((data && data.error) || 'Error al editar producto');
                 }
             } catch (err) {
                 alert('No se pudo conectar con el backend. ¿Está corriendo el servidor?\n\n' + err.message);
@@ -1445,14 +1418,7 @@
             const imagenFile = imagenInput.files && imagenInput.files[0] ? imagenInput.files[0] : null;
             if (!nombre || isNaN(cantidad) || cantidad < 0) return;
             try {
-                if (productoEditando) {
-                    await editarProducto(productoEditando.id, nombre, cantidad, imagenFile);
-                    productoEditando = null;
-                    document.getElementById('btn-guardar-producto').textContent = 'Agregar Producto';
-                    document.getElementById('btn-cancelar-edicion').style.display = 'none';
-                } else {
-                    await agregarProducto(nombre, cantidad, imagenFile);
-                }
+                await agregarProducto(nombre, cantidad, imagenFile);
                 await cargarInventario();
                 actualizarTabla();
                 actualizarListaProductos(document.getElementById('buscar-producto-lista').value);
@@ -1548,28 +1514,104 @@
                 li.textContent = `${prod.nombre} (${prod.cantidad})`;
                 li.style.padding = '7px 0 7px 8px';
                 li.style.borderBottom = '1px solid #e5e7eb';
-                li.style.cursor = 'pointer';
-                li.title = 'Editar este producto';
-                li.addEventListener('click', function() {
-                    // Activar modo edición
-                    productoEditando = prod;
-                    document.getElementById('nuevo-nombre').value = prod.nombre;
-                    document.getElementById('nuevo-cantidad').value = prod.cantidad;
-                    document.getElementById('nuevo-imagen').value = '';
-                    document.getElementById('btn-guardar-producto').textContent = 'Guardar cambios';
-                    document.getElementById('btn-cancelar-edicion').style.display = '';
-                    document.getElementById('nuevo-nombre').focus();
-                });
                 ul.appendChild(li);
             });
         }
 
-        // --- BOTÓN CANCELAR EDICIÓN ---
-        document.getElementById('btn-cancelar-edicion').addEventListener('click', function() {
-            productoEditando = null;
-            document.getElementById('form-nuevo').reset();
-            document.getElementById('btn-guardar-producto').textContent = 'Agregar Producto';
-            this.style.display = 'none';
+        // --- ACTUALIZAR TARJETAS DE INVENTARIO ---
+        function actualizarTabla() {
+            const cont = document.getElementById('tarjetas-inventario');
+            cont.innerHTML = '';
+            let lista = inventario;
+            if (filtroInventario) {
+                lista = inventario.filter(prod => prod.nombre.toLowerCase().includes(filtroInventario));
+            }
+            if (!lista.length) {
+                cont.innerHTML = '<div style="color:#888;font-size:1.08em;">Sin productos en inventario</div>';
+                return;
+            }
+            lista.forEach(prod => {
+                // Fondo transparente si es PNG, blanco si no, imagen centrada y sin contorno
+                let fondoImg = '#fff';
+                if (prod.imagen && prod.imagen.startsWith('data:image/png')) {
+                    fondoImg = 'transparent';
+                }
+                const imgHtml = prod.imagen
+                    ? `<div style="width:100%;background:${fondoImg};border-radius:14px 14px 0 0;display:flex;align-items:center;justify-content:center;padding-top:12px;padding-bottom:12px;">
+                            <img src="${prod.imagen}" alt="Imagen de ${prod.nombre}" 
+                                style="max-width:80%;max-height:180px;width:auto;height:auto;display:block;margin:auto;box-shadow:none;border:none;background:${fondoImg};">
+                       </div>`
+                    : '';
+                const card = document.createElement('div');
+                card.className = 'tarjeta-inventario';
+                card.style.position = 'relative';
+                card.style.paddingTop = prod.imagen ? '0' : '24px';
+                card.innerHTML = `
+                    ${imgHtml}
+                    <div class="existencia" style="position:absolute;bottom:18px;right:22px;top:auto;left:auto;">${prod.cantidad}</div>
+                    <div class="nombre" style="margin-top:${prod.imagen ? '18px' : '54px'}">${prod.nombre}</div>
+                `;
+                cont.appendChild(card);
+            });
+        }
+
+        // --- ACTUALIZAR TABLA ENTRADAS ---
+        function actualizarTablaEntradas() {
+            const tbody = document.getElementById('tabla-entradas').querySelector('tbody');
+            tbody.innerHTML = '';
+            entradas.forEach(ent => {
+                const tr = document.createElement('tr');
+                tr.innerHTML = `<td>${ent.producto}</td>
+                                <td>${ent.cantidad}</td>
+                                <td>${ent.fecha}</td>
+                                <td>${ent.equipo}</td>`;
+                tbody.appendChild(tr);
+            });
+        }
+
+        // --- ACTUALIZAR TABLA SALIDAS ---
+        function actualizarTablaSalidas() {
+            const tbody = document.getElementById('tabla-salidas').querySelector('tbody');
+            tbody.innerHTML = '';
+            salidas.forEach(sal => {
+                const tr = document.createElement('tr');
+                tr.innerHTML = `<td>${sal.producto}</td>
+                                <td>${sal.cantidad}</td>
+                                <td>${sal.fecha}</td>
+                                <td>${sal.equipo}</td>`;
+                tbody.appendChild(tr);
+            });
+        }
+
+        // --- MODIFICAR CAMBIO DE VENTANA PARA ACTUALIZAR TABLAS DE ENTRADAS Y SALIDAS ---
+        Object.keys(secciones).forEach(btnId => {
+            document.getElementById(btnId).addEventListener('click', async function() {
+                // Botón activo
+                document.querySelectorAll('nav button').forEach(b => b.classList.remove('active'));
+                this.classList.add('active');
+                // Mostrar sección
+                Object.values(secciones).forEach(secId => {
+                    document.getElementById(secId).classList.add('hidden');
+                });
+                document.getElementById(secciones[btnId]).classList.remove('hidden');
+                // Actualizar tablas si es necesario
+                if (btnId === 'btn-inventario') {
+                    await cargarInventario();
+                    actualizarTabla();
+                }
+                if (btnId === 'btn-movimientos') {
+                    await cargarMovimientos();
+                    actualizarMovimientos();
+                }
+                if (btnId === 'btn-entradas') {
+                    await cargarEntradas();
+                    actualizarTablaEntradas();
+                }
+                if (btnId === 'btn-salidas') {
+                    await cargarSalidas();
+                    actualizarTablaSalidas();
+                }
+            });
         });
 
         // --- AUTOCOMPLETADO PARA BUSCAR PRODUCTO EN NUEVOS PRODUCTOS ---
@@ -1649,46 +1691,6 @@
         // --- INICIALIZACIÓN ---
         inicializarDatos();
         setupMovimientosAutocomplete();
-        setupBuscarProductoLista();
-        // Inicializar tablas de entradas y salidas al cargar
-        cargarEntradas().then(actualizarTablaEntradas);
-        cargarSalidas().then(actualizarTablaSalidas);
-    </script>
-    <!-- NOTA IMPORTANTE PARA EL BACKEND -->
-    <!-- 
-        Para que las entradas y salidas se guarden por separado en las tablas Entradas y Salidas de SQL Server,
-        tu backend debe insertar un registro en la tabla correspondiente cada vez que se registre una entrada o salida.
-
-        Ejemplo para Node.js/Express usando mssql:
-
-        // ENTRADA
-        app.post('/api/entrada', async (req, res) => {
-            const { nombre, cantidad, equipo } = req.body;
-            try {
-                // Actualiza inventario y movimientos...
-                await sql.query`INSERT INTO Entradas (producto, cantidad, fecha, equipo) VALUES (${nombre}, ${cantidad}, GETDATE(), ${equipo})`;
-                res.json({ ok: true });
-            } catch (err) {
-                res.status(500).json({ error: 'Error al registrar entrada en la tabla Entradas' });
-            }
-        });
-
-        // SALIDA
-        app.post('/api/salida', async (req, res) => {
-            const { nombre, cantidad, equipo } = req.body;
-            try {
-                // Actualiza inventario y movimientos...
-                await sql.query`INSERT INTO Salidas (producto, cantidad, fecha, equipo) VALUES (${nombre}, ${cantidad}, GETDATE(), ${equipo})`;
-                res.json({ ok: true });
-            } catch (err) {
-                res.status(500).json({ error: 'Error al registrar salida en la tabla Salidas' });
-            }
-        });
-
-        Además, debes exponer los endpoints GET /api/entradas y /api/salidas para que el frontend pueda consultar estas tablas.
-    -->
-</body>
-</html>
         setupBuscarProductoLista();
         // Inicializar tablas de entradas y salidas al cargar
         cargarEntradas().then(actualizarTablaEntradas);
