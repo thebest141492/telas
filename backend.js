@@ -155,6 +155,56 @@ app.post('/api/inventario', upload.single('imagen'), async (req, res) => {
     }
 });
 
+// NUEVO: Editar producto existente (nombre, cantidad, imagen)
+app.put('/api/inventario', upload.single('imagen'), async (req, res) => {
+    const nombreOriginal = req.body.nombreOriginal;
+    const nuevoNombre = req.body.nombre;
+    const cantidad = req.body.cantidad;
+    let imagenBase64 = null;
+    if (req.file) {
+        const mime = req.file.mimetype;
+        if (mime === 'image/png' || mime === 'image/jpeg') {
+            imagenBase64 = `data:${mime};base64,${req.file.buffer.toString('base64')}`;
+        } else {
+            return res.status(400).json({ error: 'Solo se permiten imágenes PNG o JPG.' });
+        }
+    }
+    try {
+        // Verifica existencia del producto original
+        const existe = await pool.query(
+            'SELECT * FROM Inventario WHERE LOWER(nombre) = LOWER($1)',
+            [nombreOriginal]
+        );
+        if (existe.rows.length === 0) {
+            return res.status(404).json({ error: 'Producto no encontrado.' });
+        }
+        // Si el nombre cambia, verifica que el nuevo nombre no exista
+        if (nombreOriginal.toLowerCase() !== nuevoNombre.toLowerCase()) {
+            const existeNuevo = await pool.query(
+                'SELECT COUNT(*) as total FROM Inventario WHERE LOWER(nombre) = LOWER($1)',
+                [nuevoNombre]
+            );
+            if (parseInt(existeNuevo.rows[0].total) > 0) {
+                return res.status(400).json({ error: 'Ya existe un producto con ese nombre.' });
+            }
+        }
+        // Actualiza producto
+        let query = 'UPDATE Inventario SET nombre=$1, cantidad=$2';
+        let params = [nuevoNombre, cantidad];
+        if (imagenBase64) {
+            query += ', imagen=$3 WHERE LOWER(nombre) = LOWER($4)';
+            params = [nuevoNombre, cantidad, imagenBase64, nombreOriginal];
+        } else {
+            query += ' WHERE LOWER(nombre) = LOWER($3)';
+            params = [nuevoNombre, cantidad, nombreOriginal];
+        }
+        await pool.query(query, params);
+        res.json({ ok: true });
+    } catch (err) {
+        res.status(500).json({ error: err.message });
+    }
+});
+
 // Registrar entrada
 app.post('/api/entrada', async (req, res) => {
     const { nombre, cantidad, equipo } = req.body;
